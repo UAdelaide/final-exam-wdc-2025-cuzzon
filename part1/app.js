@@ -8,6 +8,8 @@ const port = 8080;
 
 let db;
 
+app.get('/', (req, res) => res.send('Hello from root'));
+
 async function initDatabase() {
   try {
     // Connect without database to create it if missing
