@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DOGS!</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    body {
+      background: linear-gradient(to right, yellow, lime, cyan, pink);
+      font-family: Comic Sans MS, cursive;
+      font-size: 24px;
+      animation: spin 10s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .button {
+      width: 300px;
+      height: 300px;
+      background: red;
+      color: white;
+      font-size: 30px;
+      border: none;
+      margin: 50px;
+    }
+
+    img {
+      width: 500px;
+      height: 500px;
+      border: 10px dashed green;
+    }
+
+    .tooltip {
+      position: absolute;
+      left: -9999px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>🐶 DOG OF THE DAY 🐾</h1>
+    <button class="button" @click="getDog">CLICK ME NOW FOR DOG</button>
+    <img :src="dogImage" alt="" />
+    <p class="tooltip">Picture of a dog</p>
+    <p>DOG NAME: MYSTERIOUSO DOGGINS<br>
+       SIZE: UNKNOWN<br>
+       🐕‍🦺🐩🦮
+    </p>
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          dogImage: ''
+        };
+      },
+      methods: {
+        async getDog() {
+          const response = await fetch('https://dog.ceo/api/breeds/image/random');
+          const data = await response.json();
+          this.dogImage = data.message;
+        }
+      },
+      mounted() {
+        this.getDog();
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
