@@ -1,65 +1,43 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
+const fs = require('fs');
+const path = require('path');
+
 const app = express();
-const port = 3000;
+const port = 8080;
 
 const dbConfig = {
   host: 'localhost',
   user: 'root',
-  password: '', // use your actual MySQL root password
-  database: 'DogWalkService'
+  multipleStatements: true
 };
 
 let pool;
 
-async function insertTestData() {
-  const conn = await pool.getConnection();
+async function initializeDatabase() {
   try {
-    // Insert users
-    await conn.query(`
-      INSERT IGNORE INTO Users (username, email, password_hash, role) VALUES
-      ('alice123', 'alice@example.com', 'hashed123', 'owner'),
-      ('bobwalker', 'bob@example.com', 'hashed456', 'walker'),
-      ('carol123', 'carol@example.com', 'hashed789', 'owner'),
-      ('davewalker', 'dave@example.com', 'hashed000', 'walker'),
-      ('emilyowner', 'emily@example.com', 'hashed111', 'owner')
-    `);
+    const sqlFilePath = path.join(__dirname, 'dogwalks.sql');
+    const sqlScript = fs.readFileSync(sqlFilePath, 'utf-8');
 
-    // Insert dogs
-    await conn.query(`
-      INSERT IGNORE INTO Dogs (owner_id, name, size)
-      SELECT user_id, 'Max', 'medium' FROM Users WHERE username = 'alice123'
-      UNION
-      SELECT user_id, 'Bella', 'small' FROM Users WHERE username = 'carol123'
-      UNION
-      SELECT user_id, 'Rocky', 'large' FROM Users WHERE username = 'alice123'
-      UNION
-      SELECT user_id, 'Luna', 'medium' FROM Users WHERE username = 'emilyowner'
-      UNION
-      SELECT user_id, 'Daisy', 'small' FROM Users WHERE username = 'carol123'
-    `);
+    const connection = await mysql.createConnection(dbConfig);
+    await connection.query(sqlScript);
+    await connection.end();
 
-    // Insert walk requests
-    await conn.query(`
-      INSERT IGNORE INTO WalkRequests (dog_id, requested_time, duration_minutes, location, status)
-      SELECT dog_id, '2025-06-10 08:00:00', 30, 'Parklands', 'open'
-      FROM Dogs WHERE name = 'Max'
-      UNION
-      SELECT dog_id, '2025-06-10 09:30:00', 45, 'Beachside Ave', 'accepted'
-      FROM Dogs WHERE name = 'Bella'
-      UNION
-      SELECT dog_id, '2025-06-11 10:00:00', 60, 'City Park', 'open'
-      FROM Dogs WHERE name = 'Rocky'
-      UNION
-      SELECT dog_id, '2025-06-12 11:00:00', 40, 'River Walk', 'open'
-      FROM Dogs WHERE name = 'Luna'
-      UNION
-      SELECT dog_id, '2025-06-13 15:30:00', 30, 'Hilltop Trail', 'cancelled'
-      FROM Dogs WHERE name = 'Daisy'
-    `);
-  } finally {
-    conn.release();
+    console.log('✅ Database initialized from dogwalks.sql');
+  } catch (err) {
+    console.error('❌ Database initialization failed:', err.message);
+    throw err;
   }
+}
+
+async function setupPool() {
+  pool = await mysql.createPool({
+    ...dbConfig,
+    database: 'DogWalkService',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+  });
 }
 
 app.get('/api/dogs', async (req, res) => {
@@ -87,7 +65,7 @@ app.get('/api/walkrequests/open', async (req, res) => {
     `);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch open walk requests', details: err.message });
+    res.status(500).json({ error: 'Failed to fetch walk requests', details: err.message });
   }
 });
 
@@ -111,17 +89,16 @@ app.get('/api/walkers/summary', async (req, res) => {
     `);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch walker summaries', details: err.message });
+    res.status(500).json({ error: 'Failed to fetch summary', details: err.message });
   }
 });
 
-// Start the server and initialize DB
 app.listen(port, async () => {
   try {
-    pool = await mysql.createPool(dbConfig);
-    await insertTestData();
-    console.log(`Server running on http://localhost:${port}`);
+    await initializeDatabase();
+    await setupPool();
+    console.log(`🚀 Server running on http://localhost:${port}`);
   } catch (err) {
-    console.error('Database initialization failed:', err.message);
+    console.error('Server failed to start:', err.message);
   }
 });
