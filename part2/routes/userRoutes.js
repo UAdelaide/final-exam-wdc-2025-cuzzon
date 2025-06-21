@@ -12,6 +12,24 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/users/mydogs
+router.get('/mydogs', async (req, res) => {
+  if (!req.session.user || req.session.user.role !== 'owner') {
+    return res.status(401).json({ error: 'Not authorized' });
+  }
+
+  try {
+    const ownerId = req.session.user.user_id;
+    const [rows] = await db.query(
+      'SELECT dog_id, name FROM Dogs WHERE owner_id = ?',
+      [ownerId]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch dogs' });
+  }
+});
+
 // POST a new user (simple signup)
 router.post('/register', async (req, res) => {
   const { username, email, password, role } = req.body;
