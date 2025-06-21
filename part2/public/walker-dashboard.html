@@ -42,56 +42,76 @@
   </div>
 
   <script>
-    const { createApp, ref, onMounted } = Vue;
+  const { createApp, ref, onMounted } = Vue;
 
-    createApp({
-      setup() {
-        const walks = ref([]);
-        const message = ref('');
-        const error = ref('');
-        const user = 3;
+  createApp({
+    setup() {
+      const walks = ref([]);
+      const message = ref('');
+      const error = ref('');
+      const userId = ref(null);
 
-        async function loadWalkRequests() {
-          try {
-            const res = await fetch('/api/walks');
-            if (!res.ok) throw new Error('Failed to load walk requests');
-            walks.value = await res.json();
-          } catch (err) {
-            error.value = err.message;
-          }
+      async function getCurrentUser() {
+        try {
+          const res = await fetch('/api/users/me');
+          if (!res.ok) throw new Error('Not logged in');
+          const user = await res.json();
+          userId.value = user.id;
+        } catch (err) {
+          error.value = 'Failed to get current user';
+          console.error(err);
         }
-
-        async function applyToWalk(requestId) {
-          try {
-            const res = await fetch(`/api/walks/${requestId}/apply`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ walker_id: user })
-            });
-            const result = await res.json();
-
-            if (!res.ok) throw new Error(result.error || 'Application failed');
-            message.value = result.message;
-            error.value = '';
-            await loadWalkRequests();
-          } catch (err) {
-            error.value = err.message;
-            message.value = '';
-          }
-        }
-
-        onMounted(() => {
-          loadWalkRequests();
-        });
-
-        return {
-          walks,
-          message,
-          error,
-          applyToWalk
-        };
       }
-    }).mount('#app');
+
+      async function loadWalkRequests() {
+        try {
+          const res = await fetch('/api/walks');
+          if (!res.ok) throw new Error('Failed to load walk requests');
+          walks.value = await res.json();
+        } catch (err) {
+          error.value = err.message;
+        }
+      }
+
+      async function applyToWalk(requestId) {
+        try {
+          if (!userId.value) {
+            await getCurrentUser();
+            if (!userId.value) throw new Error('User ID not found');
+          }
+
+          const res = await fetch(`/api/walks/${requestId}/apply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walker_id: userId.value })
+          });
+
+          const result = await res.json();
+          if (!res.ok) throw new Error(result.error || 'Application failed');
+
+          message.value = result.message;
+          error.value = '';
+          await loadWalkRequests();
+        } catch (err) {
+          error.value = err.message;
+          message.value = '';
+        }
+      }
+
+      onMounted(() => {
+        getCurrentUser();
+        loadWalkRequests();
+      });
+
+      return {
+        walks,
+        message,
+        error,
+        applyToWalk
+      };
+    }
+  }).mount('#app');
+
     document.getElementById('logoutBtn').addEventListener('click', async () => {
   const res = await fetch('/api/users/logout', { method: 'POST' });
   if (res.ok) {
