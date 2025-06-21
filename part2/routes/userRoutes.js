@@ -66,7 +66,7 @@ router.post('/login', async (req, res) => {
 
 // POST /api/users/logout
 router.post('/logout', (req, res) => {
-  req.session.destroy(err => {
+  req.session.destroy((err) => {
     if (err) {
       return res.status(500).json({ error: 'Failed to log out' });
     }
@@ -75,6 +75,7 @@ router.post('/logout', (req, res) => {
     res.json({ message: 'Logout successful' });
   });
 });
+
 
 
 module.exports = router;
