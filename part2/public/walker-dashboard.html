@@ -110,9 +110,9 @@
         applyToWalk
       };
     }
-  }).mount('#app');
+    }).mount('#app');
 
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
   const res = await fetch('/api/users/logout', { method: 'POST' });
   if (res.ok) {
     window.location.href = '/';
