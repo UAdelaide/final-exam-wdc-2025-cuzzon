@@ -35,7 +35,7 @@ router.get('/me', (req, res) => {
   res.json(req.session.user);
 });
 
-// POST login (dummy version)
+// POST login with session handling
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -49,10 +49,20 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    res.json({ message: 'Login successful', user: rows[0] });
+    const user = rows[0];
+    // Save user info in session
+    req.session.user = {
+      id: user.user_id,
+      username: user.username,
+      role: user.role
+    };
+
+    // Return role for client-side redirect
+    res.json({ message: 'Login successful', role: user.role });
   } catch (error) {
     res.status(500).json({ error: 'Login failed' });
   }
 });
+
 
 module.exports = router;
